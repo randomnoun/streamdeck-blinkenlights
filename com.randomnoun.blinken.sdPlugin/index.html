@@ -18,7 +18,7 @@
 
 		var timo = null;
 		var tc = 0;
-
+		
 		var DestinationEnum = Object.freeze({ "HARDWARE_AND_SOFTWARE": 0, "HARDWARE_ONLY": 1, "SOFTWARE_ONLY": 2 })
 
 		var blinkenAction = {
@@ -29,6 +29,7 @@
 			},
 
 			onKeyUp: function (context, settings, coordinates, userDesiredState) {
+				/*
 				console.log('onKeyUp ', coordinates, 'settings', settings);
 				var keyPressCounter = 0;
 				if (settings != null && settings.hasOwnProperty('keyPressCounter')) {
@@ -45,16 +46,26 @@
 				this.SetSettings(context, updatedSettings);
 
 				this.SetTitle(context, keyPressCounter);
+				*/
 			},
 
 			onWillAppear: function (context, settings, coordinates) {
-
+				/*
 				var keyPressCounter = 0;
 				if (settings != null && settings.hasOwnProperty('keyPressCounter')) {
 					keyPressCounter = settings["keyPressCounter"];
 				}
-				settingsCache[context] = { 'keyPressCounter': keyPressCounter };
-				this.SetTitle(context, keyPressCounter);
+				*/
+				
+				// sequence is 10 frames of animation that we're going to repeat constantly
+				var sequence = [];
+				for (var i=0; i<10; i++) {
+					sequence.push(Math.floor(Math.random() * 6));
+				}
+				settingsCache[context] = { 'sequence' : sequence };
+				
+				this.SetTitle(context, "");
+				
 
 				if (timo) {
 			        console.log('onWillAppear clearing timeout...', timo);
@@ -73,6 +84,8 @@
 			        clearInterval(timo);
 			        timo = null;
 			    } 
+				delete settingsCache[context];
+				
 
 			},
 
@@ -84,29 +97,38 @@
 
 			Tick: function (context, settings, coordinates, extra) {
 				// same as onKeyUp for now
-				console.log('Tick ', coordinates, 'settings', settings, 'tc', tc);
+				console.log('Tick ', coordinates, 'settings', settings, 'tc', tc, 'settingsCache', settingsCache);
 
 				tc++;
 				tc = tc % 10;
+				
+				var images = ['bg1', 'bg2', 'bg3', 'bg4', 'bg5', 'bg6'];
+				// var imageName = images [ tc % 3 ];
 
-				var images = ['actionDefaultImage_blue', 'actionDefaultImage_red', 'actionDefaultImage_yellow']
-				var imageName = images [ tc % 3 ];
+				// not sure where the @2x.png images coming to play here. maybe loadImageAsDataUri handles that
+				// doesn't look like it though
+				for (const [key, value] of Object.entries(settingsCache)) {
+  					console.log(key, value);
+  					// settingsCache[context] = { 'keyPressCounter': keyPressCounter, 'sequence' : sequence };
+  					var _context = key;
+  					var imageIdx = value.sequence[tc];
+  					var imageName = images[imageIdx];
+  					
+					loadImageAsDataUri(_context, `${imageName}.png`, function (_context, imgUrl) {
+						var json = {
+							"event": "setImage",
+							"context": _context,
+							"payload": {
+								image: imgUrl || "",
+								target: DestinationEnum.HARDWARE_AND_SOFTWARE
+							}
+						};
+						console.log(JSON.stringify(json));
+						websocket.send(JSON.stringify(json));
+					})
+				}
 
-				loadImageAsDataUri(`${imageName}.png`, function (imgUrl) {
-					var json = {
-						"event": "setImage",
-						"context": context,
-						"payload": {
-							image: imgUrl || "",
-							target: DestinationEnum.HARDWARE_AND_SOFTWARE
-						}
-					};
-					websocket.send(JSON.stringify(json));
-				})
-
-
-
-				this.SetTitle(context, tc);
+				// this.SetTitle(context, tc);
 			},
 
 
@@ -192,9 +214,9 @@
 
 					if (jsonPayload.hasOwnProperty('setValue')) {
 
-						var newValue = jsonPayload.setValue;
-						blinkenAction.SetSettings(context, { "keyPressCounter": newValue });
-						blinkenAction.SetTitle(context, newValue);
+						// var newValue = jsonPayload.setValue;
+						// blinkenAction.SetSettings(context, { "keyPressCounter": newValue });
+						// blinkenAction.SetTitle(context, newValue);
 
 					}
 
@@ -224,7 +246,7 @@
 		};
 
 
-		function loadImageAsDataUri(url, callback) {
+		function loadImageAsDataUri(context, url, callback) {
 			var image = new Image();
 
 			image.onload = function () {
@@ -235,7 +257,7 @@
 
 				var ctx = canvas.getContext("2d");
 				ctx.drawImage(this, 0, 0);
-				callback(canvas.toDataURL("image/png"));
+				callback(context, canvas.toDataURL("image/png"));
 			};
 
 			image.src = url;
