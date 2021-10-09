@@ -1,6 +1,6 @@
 # streamdeck-blinkenlights
 
-Make you streamdeck look look like the BATCOMPUTER from the only proper Batman series.
+Make your streamdeck look look like the BATCOMPUTER from the only proper Batman series.
 
 <img src="alfred.png" />
 
