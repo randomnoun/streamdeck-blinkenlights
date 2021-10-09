@@ -4,9 +4,14 @@ Make your streamdeck look look like the BATCOMPUTER from the only proper Batman 
 
 <img src="alfred.png" />
 
+( Image courtesy of [@BatLabels](https://mobile.twitter.com/BatLabels) )
+
 # Installation
 
 To install, double-click Releases/com.randomnoun.blinken.streamDeckPlugin 
+
+In the Stream Deck application, you probaly want to create a new panel profile, and then drag the 'Blinkenlights' 
+application into every button on the panel.
 
 <img src="screenshot.png" />
 
