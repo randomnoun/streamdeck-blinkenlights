@@ -1,4 +1,5 @@
-{
+{ 
+  "Category": "BATCOMPUTER",
   "Actions": [
     {
       "Icon": "actionIcon",
@@ -22,7 +23,7 @@
   "Name": "Blinkenlights",
   "Icon": "pluginIcon",
   "URL": "https://www.randomnoun.com/wp/the-inevitable-blog-post",
-  "PropertyInspectorPath": "numberdisplay_pi.html",
+  "PropertyInspectorPath": "blinken-property-inspector.html",
   "Version": "1.0",
   "OS": [
     {
