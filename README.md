@@ -14,14 +14,21 @@ To install, double-click Releases/com.randomnoun.blinken.streamDeckPlugin
 
 To increase the compumatic capabilities of the atomic-powered BATCOMPUTER depress the button in the top-left of the Streamdeck console. 
 
+# CELLOPHANE EMULATION MODE
+
+Press the button next to that to toggle cellophane emulation mode, which more realistically depicts a small lightbulb 
+behind a thin film of coloured cellophane. When enabled, this mode causes buttons to 
+change brightness only, rather than to change within the dizzying array of available colours 
+( chestnut, beige, burnt sienna, burgundy and peach).
+
 As always:
 
 # ACHTUNG!
     
     ALLES TURISTEN UND NONTEKNISCHEN LOOKENSPEEPERS!
-    DAS KOMPUTERMASCHINE IST NICHT FÃœR DER GEFINGERPOKEN UND MITTENGRABEN! ODERWISE IST EASY TO SCHNAPPEN DER     
+    DAS KOMPUTERMASCHINE IST NICHT FÜR DER GEFINGERPOKEN UND MITTENGRABEN! ODERWISE IST EASY TO SCHNAPPEN DER     
     SPRINGENWERK, BLOWENFUSEN UND POPPENCORKEN MIT SPITZENSPARKEN.
-    IST NICHT FÃœR GEWERKEN 
+    IST NICHT FÜR GEWERKEN 
 
 # License
 
