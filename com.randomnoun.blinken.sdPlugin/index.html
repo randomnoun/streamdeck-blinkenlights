@@ -2,7 +2,7 @@
 <html>
 
 <head>
-	<title>com.randomnoun.blinken</title>
+	<title>DAAS BLINKENLIGHTS</title>
 	<meta charset="utf-8" />
 </head>
 
@@ -14,10 +14,14 @@
 		var pluginUUID = null;
 		var settingsCache = {};
 
-		// need a timer per context probably. or not.
-
 		var timo = null;
 		var tc = 0;
+		var make_it_go_faster_toggle_enabled = false; 
+		
+		var images = ['bg1', 'bg2', 'bg3', 'bg4', 'bg5', 'bg6'];
+		var SEQUENCE_LENGTH = 10; // number of frames of animation to repeat
+		var SLOW_DELAY = 1500;
+		var FAST_DELAY = 200; // 200 as 100 is a bit too fast, websocket messages get queued
 		
 		var DestinationEnum = Object.freeze({ "HARDWARE_AND_SOFTWARE": 0, "HARDWARE_ONLY": 1, "SOFTWARE_ONLY": 2 })
 
@@ -29,87 +33,77 @@
 			},
 
 			onKeyUp: function (context, settings, coordinates, userDesiredState) {
-				/*
-				console.log('onKeyUp ', coordinates, 'settings', settings);
-				var keyPressCounter = 0;
-				if (settings != null && settings.hasOwnProperty('keyPressCounter')) {
-					keyPressCounter = settings["keyPressCounter"];
+				
+				// if this is the top-left button, it toggles between fast & slow compumatics
+				if (coordinates.row == 0 && coordinates.column == 0) {
+					make_it_go_faster_toggle_enabled = !make_it_go_faster_toggle_enabled;
+					clearInterval(timo);
+			        timo = null;
+			        timo = setInterval(() => this.Tick(context, settings, coordinates, 'timeout'), 
+		        		make_it_go_faster_toggle_enabled ? FAST_DELAY : SLOW_DELAY);
 				}
+				
+				// set a new sequence
+				var sequence = [];
+				for (var i = 0; i < SEQUENCE_LENGTH; i++) {
+					sequence.push(Math.floor(Math.random() * images.length));
+				}
+				settingsCache[context] = { 'sequence' : sequence };
 
-				keyPressCounter++;
-				keyPressCounter = keyPressCounter % 10;
-
-				updatedSettings = {};
-				updatedSettings["keyPressCounter"] = keyPressCounter;
-				settingsCache[context] = updatedSettings;
-
-				this.SetSettings(context, updatedSettings);
-
-				this.SetTitle(context, keyPressCounter);
-				*/
+				// and refresh the button image
+				var imageIdx = sequence[tc];
+				var imageName = images[imageIdx];
+					
+				loadImageAsDataUri(context, `${imageName}.png`, function (_context, imgUrl) {
+					var json = {
+						"event": "setImage",
+						"context": _context,
+						"payload": {
+							image: imgUrl || "",
+							target: DestinationEnum.HARDWARE_AND_SOFTWARE
+						}
+					};
+					// console.log(JSON.stringify(json));
+					websocket.send(JSON.stringify(json));
+				})
+				
 			},
 
 			onWillAppear: function (context, settings, coordinates) {
-				/*
-				var keyPressCounter = 0;
-				if (settings != null && settings.hasOwnProperty('keyPressCounter')) {
-					keyPressCounter = settings["keyPressCounter"];
-				}
-				*/
-				
 				// sequence is 10 frames of animation that we're going to repeat constantly
 				var sequence = [];
-				for (var i=0; i<10; i++) {
-					sequence.push(Math.floor(Math.random() * 6));
+				for (var i = 0; i < SEQUENCE_LENGTH; i++) {
+					sequence.push(Math.floor(Math.random() * images.length));
 				}
 				settingsCache[context] = { 'sequence' : sequence };
-				
 				this.SetTitle(context, "");
 				
-
-				if (timo) {
-			        console.log('onWillAppear clearing timeout...', timo);
-			        clearInterval(timo);
-			        timo = null;
-			    } 
-
-		        timo = setInterval(() => this.Tick(context, settings, coordinates, 'timeout'), 1500);
-		        console.log('--- new timeout...', timo);
+				if (!timo) {
+		        	timo = setInterval(() => this.Tick(context, settings, coordinates, 'timeout'), SLOW_DELAY);
+		        	console.log('--- new timeout...', timo);
+				}
 
 			},
 
 			onWillDisappear: function (context, settings, coordinates) {
-				if (timo) {
+				delete settingsCache[context];
+				if (Object.entries(settingsCache).length == 0 && timo) {
 			        console.log('onWillDisappear clearing timeout...', timo);
 			        clearInterval(timo);
 			        timo = null;
 			    } 
-				delete settingsCache[context];
-				
-
 			},
 
-			// coordinates are {column:n, row:n} 0-based
-			// same context is used for all buttons maybe ?
-			// so timo only runs on one button at a time at the mo
-			// and the state isn't being saved properly
-			// each button has its own context though which is a uuid-y string eg 5218E62487F76E38CA9FFADDAB7E37E3
-
+			// coordinates are 0-based {column:n, row:n} 
+			// context is a button-specific string that looks like "5218E62487F76E38CA9FFADDAB7E37E3"
 			Tick: function (context, settings, coordinates, extra) {
-				// same as onKeyUp for now
-				console.log('Tick ', coordinates, 'settings', settings, 'tc', tc, 'settingsCache', settingsCache);
+				// console.log('Tick ', coordinates, 'settings', settings, 'tc', tc, 'settingsCache', settingsCache);
 
 				tc++;
 				tc = tc % 10;
 				
-				var images = ['bg1', 'bg2', 'bg3', 'bg4', 'bg5', 'bg6'];
-				// var imageName = images [ tc % 3 ];
-
-				// not sure where the @2x.png images coming to play here. maybe loadImageAsDataUri handles that
-				// doesn't look like it though
 				for (const [key, value] of Object.entries(settingsCache)) {
-  					console.log(key, value);
-  					// settingsCache[context] = { 'keyPressCounter': keyPressCounter, 'sequence' : sequence };
+  					// console.log(key, value);
   					var _context = key;
   					var imageIdx = value.sequence[tc];
   					var imageName = images[imageIdx];
@@ -123,21 +117,20 @@
 								target: DestinationEnum.HARDWARE_AND_SOFTWARE
 							}
 						};
-						console.log(JSON.stringify(json));
+						// console.log(JSON.stringify(json));
 						websocket.send(JSON.stringify(json));
 					})
 				}
-
 				// this.SetTitle(context, tc);
 			},
 
 
-			SetTitle: function (context, keyPressCounter) {
+			SetTitle: function (context, title) {
 				var json = {
 					"event": "setTitle",
 					"context": context,
 					"payload": {
-						"title": "" + keyPressCounter,
+						"title": "" + title,
 						"target": DestinationEnum.HARDWARE_AND_SOFTWARE
 					}
 				};
@@ -213,17 +206,11 @@
 				else if (event == "sendToPlugin") {
 
 					if (jsonPayload.hasOwnProperty('setValue')) {
-
-						// var newValue = jsonPayload.setValue;
-						// blinkenAction.SetSettings(context, { "keyPressCounter": newValue });
-						// blinkenAction.SetTitle(context, newValue);
-
+						// no values to set
 					}
 
 					if (jsonPayload.hasOwnProperty('background-image')) {
-
 						const imageName = jsonPayload['background-image'];
-
 						loadImageAsDataUri(`${imageName}.png`, function (imgUrl) {
 							var json = {
 								"event": "setImage",
@@ -260,6 +247,7 @@
 				callback(context, canvas.toDataURL("image/png"));
 			};
 
+			// not sure where the @2x.png images coming to play here 
 			image.src = url;
 		};
 
