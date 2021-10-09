@@ -12,16 +12,26 @@
 
 		var websocket = null;
 		var pluginUUID = null;
+		var port = null;
+		var registerEvent = null;
+		var info;
+		var paused = false; // if we lose the websocket stop sending messages
+		
 		var settingsCache = {};
-
 		var timo = null;
 		var tc = 0;
-		var make_it_go_faster_toggle_enabled = false; 
+		var make_it_go_faster_toggle_enabled = false;
 		
+		// when false, buttons can change colour, when true they can only change brightness
+		// to more realistically depict a small lightbulb behind a thin film of coloured cellophane.
+		var cellophane_emulation_mode = true;
+		
+		// chestnut, beige, burnt sienna, burgundy, peach
 		var images = ['bg1', 'bg2', 'bg3', 'bg4', 'bg5', 'bg6'];
-		var SEQUENCE_LENGTH = 10; // number of frames of animation to repeat
+		
+		var SEQUENCE_LENGTH = 4; // number of frames of animation to repeat
 		var SLOW_DELAY = 1500;
-		var FAST_DELAY = 200; // 200 as 100 is a bit too fast, websocket messages get queued
+		var FAST_DELAY = 200; // 200msec, at 100 the websocket messages start getting queued
 		
 		var DestinationEnum = Object.freeze({ "HARDWARE_AND_SOFTWARE": 0, "HARDWARE_ONLY": 1, "SOFTWARE_ONLY": 2 })
 
@@ -32,6 +42,63 @@
 			onKeyDown: function (context, settings, coordinates, userDesiredState) {
 			},
 
+			resetSequence: function(context) {
+				// set a new sequence
+				var sequence = [];
+				
+				if (cellophane_emulation_mode) {
+					var c = Math.floor(Math.random() * 3);
+					var cycle;
+					if (c==0) { cycle = [0, 1]; }
+					else if (c==1) { cycle = [5, 2]; }
+					else if (c==2) { cycle = [3, 4]; }
+					for (var i = 0; i < SEQUENCE_LENGTH; i++) {
+						sequence.push(cycle[Math.floor(Math.random() * cycle.length)] );
+					}
+				} else {
+					for (var i = 0; i < SEQUENCE_LENGTH; i++) {
+						sequence.push(Math.floor(Math.random() * images.length));
+					}
+				}
+				
+				var buttonState = { 'context': context, 'sequence' : sequence };
+				settingsCache[context] = buttonState;
+				return buttonState;
+			},
+			
+			updateButtonImage: function(buttonState) {
+				if (!buttonState.sending) {
+					var imageIdx = buttonState.sequence[tc];
+					var imageName = images[imageIdx];
+					buttonState.sending = true;
+					loadImageAsDataUri(buttonState, `${imageName}.png`, function (buttonState, imgUrl) {
+						var json = {
+							"event": "setImage",
+							"context": buttonState.context,
+							"payload": {
+								image: imgUrl || "",
+								target: DestinationEnum.HARDWARE_AND_SOFTWARE
+							}
+						};
+						if (websocket.readyState == 1) { // OPEN
+							websocket.send(JSON.stringify(json)); // sync ?
+							buttonState.sending = false;
+						} else {
+							console.log('updateButtonImage websocket closed, readyState ', websocket.readyState);
+							paused = true;
+							// thought we might be able to reconnect here, but this doesn't work.
+							initWebSocket();
+						}
+
+					}, function (buttonState) {
+						console.log('errorCallback called');
+						buttonState.sending = false;
+					})
+				} else {
+					console.log('pending msg, skipping');
+				}				
+			},
+			
 			onKeyUp: function (context, settings, coordinates, userDesiredState) {
 				
 				// if this is the top-left button, it toggles between fast & slow compumatics
@@ -41,41 +108,22 @@
 			        timo = null;
 			        timo = setInterval(() => this.Tick(context, settings, coordinates, 'timeout'), 
 		        		make_it_go_faster_toggle_enabled ? FAST_DELAY : SLOW_DELAY);
+				
+			    // if it's the button next to that, toggle cellophane emulation mode 
+				} else if (coordinates.row == 0 && coordinates.column == 1) {
+					cellophane_emulation_mode = !cellophane_emulation_mode;
+					for (const [key, buttonState] of Object.entries(settingsCache)) {
+						this.resetSequence(key);
+					}
 				}
 				
-				// set a new sequence
-				var sequence = [];
-				for (var i = 0; i < SEQUENCE_LENGTH; i++) {
-					sequence.push(Math.floor(Math.random() * images.length));
-				}
-				settingsCache[context] = { 'sequence' : sequence };
-
-				// and refresh the button image
-				var imageIdx = sequence[tc];
-				var imageName = images[imageIdx];
-					
-				loadImageAsDataUri(context, `${imageName}.png`, function (_context, imgUrl) {
-					var json = {
-						"event": "setImage",
-						"context": _context,
-						"payload": {
-							image: imgUrl || "",
-							target: DestinationEnum.HARDWARE_AND_SOFTWARE
-						}
-					};
-					// console.log(JSON.stringify(json));
-					websocket.send(JSON.stringify(json));
-				})
-				
+				var buttonState = this.resetSequence(context);
+				updateButtonImage(buttonState);
 			},
 
 			onWillAppear: function (context, settings, coordinates) {
-				// sequence is 10 frames of animation that we're going to repeat constantly
-				var sequence = [];
-				for (var i = 0; i < SEQUENCE_LENGTH; i++) {
-					sequence.push(Math.floor(Math.random() * images.length));
-				}
-				settingsCache[context] = { 'sequence' : sequence };
+				// sequence is 4 frames of animation that we're going to repeat constantly
+				this.resetSequence(context);
 				this.SetTitle(context, "");
 				
 				if (!timo) {
@@ -93,33 +141,43 @@
 			        timo = null;
 			    } 
 			},
+			
+			onSystemDidWakeUp: function (context, settings, coordinates) {
+				// reconnect
+				if (websocket.readyState != 1) { // OPEN
+					// not sure if this works
+					console.log('onSystemDidWakeUp websocket closed, readyState', websocket.readyState);
+					initWebSocket();
+				}
+
+
+			},
+
 
 			// coordinates are 0-based {column:n, row:n} 
 			// context is a button-specific string that looks like "5218E62487F76E38CA9FFADDAB7E37E3"
+			
+			// so anyway after the laptop goes into the Standby (S3) low power state, this keeps running
+			// but the messages seem to take longer and longer to get processed by the host elgato application
+			// until eventually the setImage messages don't have time to get sent before another one is generated
+			// which I think is causing some queues to fill up and break the app.
+			// now keep a per-button 'sending' flag to prevent messages being sent whilst messages are pending.
+			
+			// if the websocket craps itself we also stop trying to send more messages down that socket
+			
 			Tick: function (context, settings, coordinates, extra) {
 				// console.log('Tick ', coordinates, 'settings', settings, 'tc', tc, 'settingsCache', settingsCache);
 
 				tc++;
-				tc = tc % 10;
+				tc = tc % SEQUENCE_LENGTH;
 				
-				for (const [key, value] of Object.entries(settingsCache)) {
+				for (const [key, buttonState] of Object.entries(settingsCache)) {
   					// console.log(key, value);
   					var _context = key;
-  					var imageIdx = value.sequence[tc];
+  					var imageIdx = buttonState.sequence[tc];
   					var imageName = images[imageIdx];
-  					
-					loadImageAsDataUri(_context, `${imageName}.png`, function (_context, imgUrl) {
-						var json = {
-							"event": "setImage",
-							"context": _context,
-							"payload": {
-								image: imgUrl || "",
-								target: DestinationEnum.HARDWARE_AND_SOFTWARE
-							}
-						};
-						// console.log(JSON.stringify(json));
-						websocket.send(JSON.stringify(json));
-					})
+  					this.updateButtonImage(buttonState);
+
 				}
 				// this.SetTitle(context, tc);
 			},
@@ -138,24 +196,25 @@
 				websocket.send(JSON.stringify(json));
 			},
 
-			SetSettings: function (context, settings) {
-				var json = {
-					"event": "setSettings",
-					"context": context,
-					"payload": settings
-				};
-
-				websocket.send(JSON.stringify(json));
-			},
-
-			AddToSettings: function (context, newSettings) {
-				settingsCache[context]
-			}
 		};
 
 		function connectElgatoStreamDeckSocket(inPort, inPluginUUID, inRegisterEvent, inInfo) {
 			pluginUUID = inPluginUUID
-
+			port = inPort
+			registerEvent = inRegisterEvent
+			info = inInfo
+			
+			initWebSocket();
+		};
+		
+		function initWebSocket() {
+			// websocket croaks apparently, see if this fixes it
+			var inPluginUUID = pluginUUID;
+			var inPort = port;
+			var inRegisterEvent = registerEvent;
+			var inInfo = info;
+			
+			console.log('getWebSocket()', inPluginUUID, inPort, inRegisterEvent, inInfo);
 			// Open the web socket
 			websocket = new WebSocket("ws://localhost:" + inPort);
 
@@ -186,54 +245,52 @@
 					var coordinates = jsonPayload['coordinates'];
 					var userDesiredState = jsonPayload['userDesiredState'];
 					blinkenAction.onKeyDown(context, settings, coordinates, userDesiredState);
-				}
-				else if (event == "keyUp") {
+				
+				} else if (event == "keyUp") {
 					var settings = jsonPayload['settings'];
 					var coordinates = jsonPayload['coordinates'];
 					var userDesiredState = jsonPayload['userDesiredState'];
 					blinkenAction.onKeyUp(context, settings, coordinates, userDesiredState);
-				}
-				else if (event == "willAppear") {
+				
+				} else if (event == "willAppear") {
 					var settings = jsonPayload['settings'];
 					var coordinates = jsonPayload['coordinates'];
 					blinkenAction.onWillAppear(context, settings, coordinates);
-				}
-				else if (event == "willDisappear") {
+				
+				} else if (event == "willDisappear") {
 					var settings = jsonPayload['settings'];
 					var coordinates = jsonPayload['coordinates'];
 					blinkenAction.onWillDisappear(context, settings, coordinates);
-				}
-				else if (event == "sendToPlugin") {
-
+				
+				} else if (event == "systemDidWakeUp") {
+					var settings = jsonPayload['settings'];
+					var coordinates = jsonPayload['coordinates'];
+					blinkenAction.onSystemDidWakeUp(context, settings, coordinates);
+				
+				} else if (event == "sendToPlugin") {
 					if (jsonPayload.hasOwnProperty('setValue')) {
 						// no values to set
 					}
-
 					if (jsonPayload.hasOwnProperty('background-image')) {
-						const imageName = jsonPayload['background-image'];
-						loadImageAsDataUri(`${imageName}.png`, function (imgUrl) {
-							var json = {
-								"event": "setImage",
-								"context": context,
-								"payload": {
-									image: imgUrl || "",
-									target: DestinationEnum.HARDWARE_AND_SOFTWARE
-								}
-							};
-							websocket.send(JSON.stringify(json));
-						})
-
+						// ignore user-supplied backgrounds
 					}
+					
+				} else if (event=="titleParametersDidChange") {
+					// is issued during onWillAppear; ignore
+				
+				} else {
+					console.log('unknown event ' + event, jsonPayload)
 				}
 			};
 
 			websocket.onclose = function () {
-				// Websocket is closed
+				console.log('websocket onClose');
 			};
-		};
+			
+		}
 
 
-		function loadImageAsDataUri(context, url, callback) {
+		function loadImageAsDataUri(buttonState, url, callback, errorCallback) {
 			var image = new Image();
 
 			image.onload = function () {
@@ -244,8 +301,11 @@
 
 				var ctx = canvas.getContext("2d");
 				ctx.drawImage(this, 0, 0);
-				callback(context, canvas.toDataURL("image/png"));
+				callback(buttonState, canvas.toDataURL("image/png"));
 			};
+			image.onerror = function() {
+				errorCallback(buttonState);
+			}
 
 			// not sure where the @2x.png images coming to play here 
 			image.src = url;
