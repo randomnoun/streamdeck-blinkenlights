@@ -23,7 +23,11 @@ As always:
     SPRINGENWERK, BLOWENFUSEN UND POPPENCORKEN MIT SPITZENSPARKEN.
     IST NICHT FÜR GEWERKEN 
 
-# Attribution
+# License
 
-Based on the [streamdeck-numberdisplay](https://github.com/elgatosf/streamdeck-numberdisplay) sample ( MIT-licensed )
-Uses the timer.js from [streamdeck-timerfix](https://github.com/elgatosf/streamdeck-timerfix) ( MIT-licensed )
+Licensed under the BSD 2-Clause License
+
+This project includes source code from:
+
+   * [streamdeck-numberdisplay](https://github.com/elgatosf/streamdeck-numberdisplay) sample ( MIT-licensed )
+   * [streamdeck-timerfix](https://github.com/elgatosf/streamdeck-timerfix) ( MIT-licensed )
