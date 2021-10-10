@@ -1,0 +1,8 @@
+When your laptop goes into low power mode, the streamdeck app appears to continue to run, but as it goes into deeper and deeper sleep states, the
+update speed starts slowing down, to the point where it takes more than longer than a single animation frame to update all the button images.
+
+Soon after this the app breaks and remains broken when the laptop wakes up.
+
+There's some workarounds for this in the index.html.js; to test put computer into standby via running 
+
+psshutdown -d -t 0
