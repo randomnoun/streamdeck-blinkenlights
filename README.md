@@ -10,7 +10,7 @@ Make your streamdeck look look like the BATCOMPUTER from the only proper Batman 
 
 To install, double-click Releases/com.randomnoun.blinken.streamDeckPlugin 
 
-In the Stream Deck application, you probaly want to create a new panel profile, and then drag the 'Blinkenlights' 
+In the Stream Deck application, you probably want to create a new panel profile, and then drag the 'Blinkenlights' 
 application into every button on the panel.
 
 <img src="screenshot.png" />
@@ -31,8 +31,9 @@ As always:
 # ACHTUNG!
     
     ALLES TURISTEN UND NONTEKNISCHEN LOOKENSPEEPERS!
-    DAS KOMPUTERMASCHINE IST NICHT FÜR DER GEFINGERPOKEN UND MITTENGRABEN! ODERWISE IST EASY TO SCHNAPPEN DER     
-    SPRINGENWERK, BLOWENFUSEN UND POPPENCORKEN MIT SPITZENSPARKEN.
+    DAS KOMPUTERMASCHINE IST NICHT FÜR DER GEFINGERPOKEN UND MITTENGRABEN! 
+    ODERWISE IST EASY TO SCHNAPPEN DER SPRINGENWERK, 
+    BLOWENFUSEN UND POPPENCORKEN MIT SPITZENSPARKEN.
     IST NICHT FÜR GEWERKEN 
 
 # License
