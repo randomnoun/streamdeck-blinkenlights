@@ -1,5 +1,4 @@
-{ 
-  "Category": "BATCOMPUTER",
+{
   "Actions": [
     {
       "Icon": "actionIcon",
@@ -13,7 +12,8 @@
       ],
       "SupportedInMultiActions": false,
       "Tooltip": "Make the lights blinken. Pretend there's some umlauts in there, because elgato doesn't like them",
-      "UUID": "com.randomnoun.blinken.action"
+      "UUID": "com.randomnoun.blinken.action",
+      "UserTitleEnabled": false
     }
   ],
   "SDKVersion": 2,
@@ -22,8 +22,10 @@
   "Description": "This lets you blinken the lights",
   "Name": "Blinkenlights",
   "Icon": "pluginIcon",
-  "URL": "https://www.randomnoun.com/wp/the-inevitable-blog-post",
+  "Category": "BATCOMPUTER",
+  "CategoryIcon": "actionDefaultImage",
   "PropertyInspectorPath": "blinken-property-inspector.html",
+  "URL": "https://www.randomnoun.com/wp/the-inevitable-blog-post",
   "Version": "1.1",
   "OS": [
     {
